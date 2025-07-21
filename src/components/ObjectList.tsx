@@ -10,6 +10,8 @@ interface ObjectListProps {
   isActive: boolean;
   isLoading: boolean;
   bucketName: string | null;
+  viewportStart: number;
+  viewportSize: number;
 }
 
 export const ObjectList: React.FC<ObjectListProps> = ({
@@ -19,10 +21,16 @@ export const ObjectList: React.FC<ObjectListProps> = ({
   isActive,
   isLoading,
   bucketName,
+  viewportStart,
+  viewportSize,
 }) => {
   const filteredObjects = objects.filter(obj =>
     obj.Key?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const visibleObjects = filteredObjects.slice(viewportStart, viewportStart + viewportSize);
+  const hasMore = filteredObjects.length > viewportStart + viewportSize;
+  const showScrollIndicator = filteredObjects.length > viewportSize;
 
   if (!bucketName) {
     return (
@@ -63,6 +71,7 @@ export const ObjectList: React.FC<ObjectListProps> = ({
     <Box flexDirection="column" padding={1}>
       <Text bold color="yellow">
         📄 Objects {isActive ? '(Active)' : ''} - {bucketName}
+        {showScrollIndicator && ` (${viewportStart + 1}-${Math.min(viewportStart + viewportSize, filteredObjects.length)} of ${filteredObjects.length})`}
       </Text>
       
       <Box flexDirection="column" marginTop={1}>
@@ -72,8 +81,9 @@ export const ObjectList: React.FC<ObjectListProps> = ({
           </Text>
         </Box>
         
-        {filteredObjects.map((obj, index) => {
-          const isSelected = index === selectedIndex && isActive;
+        {visibleObjects.map((obj, index) => {
+          const actualIndex = viewportStart + index;
+          const isSelected = actualIndex === selectedIndex && isActive;
           const key = obj.Key || 'Unknown';
           const displayKey = key.length > 28 ? key.slice(-28) : key;
           const size = S3Service.formatSize(obj.Size);
@@ -84,7 +94,7 @@ export const ObjectList: React.FC<ObjectListProps> = ({
           const displayClass = storageClass.length > 10 ? storageClass.slice(0, 10) : storageClass;
 
           return (
-            <Box key={`${obj.Key}-${index}`}>
+            <Box key={`${obj.Key}-${actualIndex}`}>
               <Text
                 color={isSelected ? 'black' : 'white'}
                 backgroundColor={isSelected ? 'yellow' : undefined}
@@ -95,6 +105,18 @@ export const ObjectList: React.FC<ObjectListProps> = ({
             </Box>
           );
         })}
+        
+        {showScrollIndicator && viewportStart > 0 && (
+          <Box>
+            <Text color="gray" dimColor>↑ More items above</Text>
+          </Box>
+        )}
+        
+        {showScrollIndicator && hasMore && (
+          <Box>
+            <Text color="gray" dimColor>↓ More items below</Text>
+          </Box>
+        )}
       </Box>
 
       <Box marginTop={1}>

@@ -35,6 +35,8 @@ export interface AppState {
   error: string | null;
   activePanel: 'buckets' | 'objects';
   showHelp: boolean;
+  objectViewportStart: number;
+  bucketViewportStart: number;
 }
 
 export type Panel = 'buckets' | 'objects';

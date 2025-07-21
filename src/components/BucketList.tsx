@@ -9,6 +9,8 @@ interface BucketListProps {
   searchTerm: string;
   isActive: boolean;
   isLoading: boolean;
+  viewportStart: number;
+  viewportSize: number;
 }
 
 export const BucketList: React.FC<BucketListProps> = ({
@@ -17,10 +19,16 @@ export const BucketList: React.FC<BucketListProps> = ({
   searchTerm,
   isActive,
   isLoading,
+  viewportStart,
+  viewportSize,
 }) => {
   const filteredBuckets = buckets.filter(bucket =>
     bucket.Name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const visibleBuckets = filteredBuckets.slice(viewportStart, viewportStart + viewportSize);
+  const hasMore = filteredBuckets.length > viewportStart + viewportSize;
+  const showScrollIndicator = filteredBuckets.length > viewportSize;
 
   if (isLoading) {
     return (
@@ -48,6 +56,7 @@ export const BucketList: React.FC<BucketListProps> = ({
     <Box flexDirection="column" padding={1}>
       <Text bold color="cyan">
         📦 Buckets {isActive ? '(Active)' : ''}
+        {showScrollIndicator && ` (${viewportStart + 1}-${Math.min(viewportStart + viewportSize, filteredBuckets.length)} of ${filteredBuckets.length})`}
       </Text>
       
       <Box flexDirection="column" marginTop={1}>
@@ -57,8 +66,9 @@ export const BucketList: React.FC<BucketListProps> = ({
           </Text>
         </Box>
         
-        {filteredBuckets.map((bucket, index) => {
-          const isSelected = index === selectedIndex && isActive;
+        {visibleBuckets.map((bucket, index) => {
+          const actualIndex = viewportStart + index;
+          const isSelected = actualIndex === selectedIndex && isActive;
           const bucketName = bucket.Name || 'Unknown';
           const region = bucket.Region || 'Unknown';
           const created = bucket.CreationDate 
@@ -66,7 +76,7 @@ export const BucketList: React.FC<BucketListProps> = ({
             : 'Unknown';
 
           return (
-            <Box key={bucket.Name || index}>
+            <Box key={bucket.Name || actualIndex}>
               <Text
                 color={isSelected ? 'black' : 'white'}
                 backgroundColor={isSelected ? 'cyan' : undefined}
@@ -77,6 +87,18 @@ export const BucketList: React.FC<BucketListProps> = ({
             </Box>
           );
         })}
+        
+        {showScrollIndicator && viewportStart > 0 && (
+          <Box>
+            <Text color="gray" dimColor>↑ More items above</Text>
+          </Box>
+        )}
+        
+        {showScrollIndicator && hasMore && (
+          <Box>
+            <Text color="gray" dimColor>↓ More items below</Text>
+          </Box>
+        )}
       </Box>
 
       <Box marginTop={1}>

@@ -24,10 +24,36 @@ export const App: React.FC<AppProps> = ({ config }) => {
     isLoading: true,
     error: null,
     activePanel: 'buckets',
-    showHelp: false
+    showHelp: false,
+    objectViewportStart: 0,
+    bucketViewportStart: 0
   });
 
   const [s3Service] = useState(() => new S3Service(config));
+
+  const VIEWPORT_SIZE = 15; // Number of items to show in viewport
+
+  const updateViewport = (
+    selectedIndex: number,
+    totalItems: number,
+    currentViewportStart: number
+  ): number => {
+    let newViewportStart = currentViewportStart;
+    
+    // If selection is above viewport, scroll up
+    if (selectedIndex < currentViewportStart) {
+      newViewportStart = selectedIndex;
+    }
+    // If selection is below viewport, scroll down
+    else if (selectedIndex >= currentViewportStart + VIEWPORT_SIZE) {
+      newViewportStart = Math.max(0, selectedIndex - VIEWPORT_SIZE + 1);
+    }
+    
+    // Ensure we don't scroll past the end
+    newViewportStart = Math.min(newViewportStart, Math.max(0, totalItems - VIEWPORT_SIZE));
+    
+    return newViewportStart;
+  };
 
   const loadBuckets = async () => {
     setState((prev: AppState) => ({ ...prev, isLoading: true, error: null }));
@@ -52,6 +78,7 @@ export const App: React.FC<AppProps> = ({ config }) => {
         objects, 
         selectedBucket: bucketName,
         selectedObjectIndex: 0,
+        objectViewportStart: 0,
         isLoading: false 
       }));
     } catch (error) {
@@ -103,29 +130,49 @@ export const App: React.FC<AppProps> = ({ config }) => {
 
     if (key.upArrow) {
       if (state.activePanel === 'buckets') {
-        setState((prev: AppState) => ({
-          ...prev,
-          selectedBucketIndex: Math.max(0, prev.selectedBucketIndex - 1)
-        }));
+        setState((prev: AppState) => {
+          const newIndex = Math.max(0, prev.selectedBucketIndex - 1);
+          const newViewportStart = updateViewport(newIndex, prev.buckets.length, prev.bucketViewportStart);
+          return {
+            ...prev,
+            selectedBucketIndex: newIndex,
+            bucketViewportStart: newViewportStart
+          };
+        });
       } else {
-        setState((prev: AppState) => ({
-          ...prev,
-          selectedObjectIndex: Math.max(0, prev.selectedObjectIndex - 1)
-        }));
+        setState((prev: AppState) => {
+          const newIndex = Math.max(0, prev.selectedObjectIndex - 1);
+          const newViewportStart = updateViewport(newIndex, prev.objects.length, prev.objectViewportStart);
+          return {
+            ...prev,
+            selectedObjectIndex: newIndex,
+            objectViewportStart: newViewportStart
+          };
+        });
       }
     }
 
     if (key.downArrow) {
       if (state.activePanel === 'buckets') {
-        setState((prev: AppState) => ({
-          ...prev,
-          selectedBucketIndex: Math.min(prev.buckets.length - 1, prev.selectedBucketIndex + 1)
-        }));
+        setState((prev: AppState) => {
+          const newIndex = Math.min(prev.buckets.length - 1, prev.selectedBucketIndex + 1);
+          const newViewportStart = updateViewport(newIndex, prev.buckets.length, prev.bucketViewportStart);
+          return {
+            ...prev,
+            selectedBucketIndex: newIndex,
+            bucketViewportStart: newViewportStart
+          };
+        });
       } else {
-        setState((prev: AppState) => ({
-          ...prev,
-          selectedObjectIndex: Math.min(prev.objects.length - 1, prev.selectedObjectIndex + 1)
-        }));
+        setState((prev: AppState) => {
+          const newIndex = Math.min(prev.objects.length - 1, prev.selectedObjectIndex + 1);
+          const newViewportStart = updateViewport(newIndex, prev.objects.length, prev.objectViewportStart);
+          return {
+            ...prev,
+            selectedObjectIndex: newIndex,
+            objectViewportStart: newViewportStart
+          };
+        });
       }
     }
 
@@ -156,6 +203,8 @@ export const App: React.FC<AppProps> = ({ config }) => {
             searchTerm={state.bucketSearchTerm}
             isActive={state.activePanel === 'buckets'}
             isLoading={state.isLoading && state.buckets.length === 0}
+            viewportStart={state.bucketViewportStart}
+            viewportSize={VIEWPORT_SIZE}
           />
         </Box>
         <Box width="50%" borderStyle="single">
@@ -166,6 +215,8 @@ export const App: React.FC<AppProps> = ({ config }) => {
             isActive={state.activePanel === 'objects'}
             isLoading={state.isLoading && state.selectedBucket !== null}
             bucketName={state.selectedBucket}
+            viewportStart={state.objectViewportStart}
+            viewportSize={VIEWPORT_SIZE}
           />
         </Box>
       </Box>
